@@ -16,13 +16,14 @@ func main(){
 
 	// accounts/834644773037/day/2017/11/13
 
-	mapFunction, err := sum.AccountMapFunction()
+	// mapInterface, err := sum.AccountMapFunction()
+	mapInterface, err := sum.YearMonthMapFunction()
 
 	if err != nil {
 		log.Panicf("Failed to prepare a map function:%v\n", err)
 	}
 
-	r, err := sum.ProcessFiles(os.Args[1:], acceptAllFilterFunction, mapFunction)
+	r, err := sum.ProcessFiles(os.Args[1:], acceptAllFilterFunction, mapInterface)
 
 	if err != nil {
 		log.Panicf("Process file error:%v", err)

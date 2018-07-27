@@ -12,7 +12,9 @@ import (
 	"sort"
 )
 
-
+type MapInterface interface {
+	mapRecord(record []string)(interface{}, error)
+}
 
 type ResultRecord struct {
 	Key string
@@ -35,7 +37,7 @@ func (sr *SortedResult) Swap(i, j int) {
 	sr.Records[i], sr.Records[j] = sr.Records[j], sr.Records[i]
 }
 
-func ProcessFile(filename string, filterFunction func([]string)bool, mapFunction func([]string)(interface{},error), result *map[interface{}]uint64) error{
+func ProcessFile(filename string, filterFunction func([]string)bool, mapFunction MapInterface, result *map[interface{}]uint64) error{
 	log.Printf("file %s\n", filename)
 
 	rawReader, err := os.Open(filename)
@@ -75,7 +77,7 @@ func ProcessFile(filename string, filterFunction func([]string)bool, mapFunction
 		}
 
 		if filterFunction(record) {
-			key, err := mapFunction(record)
+			key, err := mapFunction.mapRecord(record)
 
 			if err != nil {
 				return fmt.Errorf("failed to map record:%v error:%v", record, err)
@@ -100,7 +102,7 @@ func ProcessFile(filename string, filterFunction func([]string)bool, mapFunction
 	}
 }
 
-func ProcessFiles(fileNames []string, filterFunction func([]string)bool, mapFunction func([]string)(interface{},error)) (SortedResult, error){
+func ProcessFiles(fileNames []string, filterFunction func([]string)bool, mapFunction MapInterface) (SortedResult, error){
 	r := SortedResult{Records:make([]ResultRecord, 0)}
 	result := make(map[interface{}]uint64)
 
