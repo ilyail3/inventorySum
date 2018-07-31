@@ -1,23 +1,23 @@
 package sum
 
 import (
-	"os"
-	"log"
-	"strings"
 	"compress/gzip"
-	"fmt"
 	"encoding/csv"
+	"fmt"
 	"io"
-	"strconv"
+	"log"
+	"os"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 type MapInterface interface {
-	mapRecord(record []string)(interface{}, error)
+	mapRecord(record []string) (interface{}, error)
 }
 
 type ResultRecord struct {
-	Key string
+	Key  string
 	Size uint64
 }
 
@@ -29,7 +29,7 @@ func (sr *SortedResult) Len() int {
 	return len(sr.Records)
 }
 
-func (sr *SortedResult) Less(i, j int) bool{
+func (sr *SortedResult) Less(i, j int) bool {
 	return strings.Compare(sr.Records[i].Key, sr.Records[j].Key) < 0
 }
 
@@ -37,7 +37,7 @@ func (sr *SortedResult) Swap(i, j int) {
 	sr.Records[i], sr.Records[j] = sr.Records[j], sr.Records[i]
 }
 
-func ProcessFile(filename string, filterFunction func([]string)bool, mapFunction MapInterface, result *map[interface{}]uint64) error{
+func ProcessFile(filename string, filterFunction func([]string) bool, mapFunction MapInterface, result *map[interface{}]uint64, forceGzip bool) error {
 	log.Printf("file %s\n", filename)
 
 	rawReader, err := os.Open(filename)
@@ -51,7 +51,7 @@ func ProcessFile(filename string, filterFunction func([]string)bool, mapFunction
 
 	var reader io.ReadCloser = rawReader
 
-	if strings.HasSuffix(filename, ".gz") {
+	if forceGzip || strings.HasSuffix(filename, ".gz") {
 		reader, err = gzip.NewReader(rawReader)
 
 		if err != nil {
@@ -89,7 +89,7 @@ func ProcessFile(filename string, filterFunction func([]string)bool, mapFunction
 				current = 0
 			}
 
-			size, err := strconv.ParseUint(record[2],10, 64)
+			size, err := strconv.ParseUint(record[2], 10, 64)
 
 			if err != nil {
 				return fmt.Errorf("encountered invalid size for record %v, size:%s, err:%v", record, record[2], err)
@@ -102,12 +102,12 @@ func ProcessFile(filename string, filterFunction func([]string)bool, mapFunction
 	}
 }
 
-func ProcessFiles(fileNames []string, filterFunction func([]string)bool, mapFunction MapInterface) (SortedResult, error){
-	r := SortedResult{Records:make([]ResultRecord, 0)}
+func ProcessFiles(fileNames []string, filterFunction func([]string) bool, mapFunction MapInterface, forceGzip bool) (SortedResult, error) {
+	r := SortedResult{Records: make([]ResultRecord, 0)}
 	result := make(map[interface{}]uint64)
 
 	for _, file := range fileNames {
-		err := ProcessFile(file, filterFunction, mapFunction, &result)
+		err := ProcessFile(file, filterFunction, mapFunction, &result, forceGzip)
 
 		if err != nil {
 			return r, fmt.Errorf("error processing file:%s, error:%v", file, err)
@@ -118,8 +118,8 @@ func ProcessFiles(fileNames []string, filterFunction func([]string)bool, mapFunc
 		//fmt.Printf("%v %d\n", key, num)
 		if key != nil {
 			r.Records = append(r.Records, ResultRecord{
-				Key: fmt.Sprintf("%v", key),
-				Size: num })
+				Key:  fmt.Sprintf("%v", key),
+				Size: num})
 		}
 	}
 
