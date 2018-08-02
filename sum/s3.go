@@ -137,3 +137,55 @@ func S3Read(config aws.Config, bucket string, prefix string, filterFunction func
 
 	return ProcessFiles(files, filterFunction, mapFunction, true)
 }
+
+func WriteResult(config aws.Config, bucket string, keyName string, results SortedResult) error {
+	tmpFile, err := ioutil.TempFile("", "inventory_sum_results")
+
+	if err != nil {
+		return fmt.Errorf("failed to open temp file for result:%v", err)
+	}
+
+	defer func() {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+	}()
+
+	for i, record := range results.Records {
+		if i > 0 {
+			_, err = fmt.Fprint(tmpFile, "\n")
+
+			if err != nil {
+				return fmt.Errorf("failed to write to temp file:%v", err)
+			}
+
+		}
+
+		_, err = fmt.Fprintf(tmpFile, "%s,%d", record.Key, record.Size)
+
+		if err != nil {
+			return fmt.Errorf("failed to write to temp file:%v", err)
+		}
+	}
+
+	s, err := session.NewSession(&config)
+
+	if err != nil {
+		return fmt.Errorf("failed to open s3 session:%v", err)
+	}
+
+	s3Service := s3.New(s)
+
+	_, err = tmpFile.Seek(0, io.SeekStart)
+
+	if err != nil {
+		return fmt.Errorf("failed to seek to start:%v", err)
+	}
+
+	_, err = s3Service.PutObject(&s3.PutObjectInput{Body: tmpFile, Bucket: aws.String(bucket), Key: aws.String(keyName)})
+
+	if err != nil {
+		return fmt.Errorf("failed to upload tmp file to s3:%v", err)
+	}
+
+	return nil
+}
